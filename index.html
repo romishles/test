@@ -192,8 +192,24 @@
   .info-box.open .body{ -webkit-line-clamp:unset; }
   .info-box .chev{ text-align:center; font-size:11px; opacity:.75; margin-top:4px; }
 
-  .connector-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .connector-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:0; transition:opacity .3s ease; }
   .connector-svg path{ fill:none; stroke:var(--line); stroke-width:1.5; }
+
+  /* ---------- transitions between focused items ---------- */
+  .main-card, .satellite{ will-change:transform; }
+  .enter-anim{
+    opacity:0;
+    transform:translateY(10px);
+    animation:enterFade .38s ease forwards;
+    animation-delay:.3s;
+  }
+  @keyframes enterFade{ to{ opacity:1; transform:none; } }
+  .exit-clone{
+    position:fixed;
+    pointer-events:none;
+    z-index:500;
+    margin:0;
+  }
 
   /* ---------- bottom timeline bar ---------- */
   #timeline-bar{
@@ -1735,11 +1751,111 @@ const INFO_FIELDS = [
 ];
 
 function openDetail(id){
+  const wasOpen = currentId !== null && document.getElementById("detail").style.display === "block";
+  const prevItem = wasOpen ? byId(currentId) : null;
+
+  let firstRects = null;
+  let exitClone = null;
+
+  if(wasOpen){
+    firstRects = captureRects();
+
+    // if the outgoing main card won't be reused as a satellite of the new item,
+    // clone it now (before we destroy it) so we can animate it "moving away"
+    const newItem = byId(id);
+    const willBeReused = newItem && (newItem.links || []).includes(prevItem.id);
+    if(!willBeReused){
+      const mainCardEl = document.querySelector("#main-col .main-card");
+      if(mainCardEl){
+        const r = mainCardEl.getBoundingClientRect();
+        exitClone = mainCardEl.cloneNode(true);
+        exitClone.classList.add("exit-clone");
+        exitClone.style.left = r.left+"px";
+        exitClone.style.top = r.top+"px";
+        exitClone.style.width = r.width+"px";
+        exitClone.style.height = r.height+"px";
+        document.body.appendChild(exitClone);
+      }
+    }
+  }
+
   currentId = id;
   document.getElementById("overview").style.display = "none";
   document.getElementById("detail").style.display = "block";
   renderDetail();
   renderTimelineBar();
+
+  if(wasOpen){
+    playTransition(firstRects, prevItem);
+  }
+  if(exitClone){
+    requestAnimationFrame(()=>{
+      exitClone.style.transition = "transform .38s ease, opacity .38s ease";
+      exitClone.style.transform = "translateY(-18px) scale(.86)";
+      exitClone.style.opacity = "0";
+    });
+    setTimeout(()=>exitClone.remove(), 420);
+  }
+}
+
+/* capture on-screen positions of the currently visible main card + satellites,
+   keyed by item id, so we can FLIP-animate them into their new positions */
+function captureRects(){
+  const map = {};
+  if(currentId !== null){
+    const mainCard = document.querySelector("#main-col .main-card");
+    if(mainCard) map[currentId] = mainCard.getBoundingClientRect();
+  }
+  document.querySelectorAll("#col-links .satellite").forEach(sat=>{
+    map[parseInt(sat.dataset.id)] = sat.getBoundingClientRect();
+  });
+  return map;
+}
+
+/* animate every element that existed before (by item id) from its old rect
+   into its new layout position/size; anything brand new fades in afterward */
+function playTransition(firstRects, prevItem){
+  const usedIds = new Set();
+
+  const mainCard = document.querySelector("#main-col .main-card");
+  if(mainCard){
+    if(firstRects[currentId]){
+      flipElement(mainCard, firstRects[currentId]);
+      usedIds.add(currentId);
+    } else {
+      mainCard.classList.add("enter-anim");
+    }
+  }
+
+  document.querySelectorAll("#col-links .satellite").forEach(sat=>{
+    const id = parseInt(sat.dataset.id);
+    if(firstRects[id] !== undefined && !usedIds.has(id)){
+      flipElement(sat, firstRects[id]);
+      usedIds.add(id);
+    } else {
+      sat.classList.add("enter-anim");
+    }
+  });
+
+  // text/quote boxes and connection lines always appear fresh, after the cards settle
+  document.querySelectorAll("#col-info .info-box").forEach(box=>box.classList.add("enter-anim"));
+}
+
+/* classic FLIP: jump the element back to where it visually was (no transition),
+   then release it so the browser animates it to its real, final position */
+function flipElement(el, firstRect){
+  const last = el.getBoundingClientRect();
+  const dx = firstRect.left - last.left;
+  const dy = firstRect.top - last.top;
+  const sx = last.width ? firstRect.width / last.width : 1;
+  const sy = last.height ? firstRect.height / last.height : 1;
+  el.style.transition = "none";
+  el.style.transformOrigin = "top left";
+  el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+  requestAnimationFrame(()=>{
+    el.style.transition = "transform .42s cubic-bezier(.4,0,.2,1)";
+    el.style.transform = "none";
+  });
 }
 
 function backToOverview(){
@@ -1781,6 +1897,7 @@ function renderDetail(){
     const sat = document.createElement("div");
     sat.className = "satellite";
     sat.id = "sat-"+linkedId;
+    sat.dataset.id = linkedId;
     sat.innerHTML = `
       <div onclick="openDetail(${linked.id})">
         <div class="thumb">${typeThumbLabel(linked)}</div>
@@ -1809,7 +1926,10 @@ function renderDetail(){
     infoCol.appendChild(box);
   });
 
+  const svg = document.getElementById("connector-svg");
+  svg.style.opacity = "0";
   requestAnimationFrame(drawConnectors);
+  setTimeout(()=>{ svg.style.opacity = "1"; }, 320);
 }
 
 function drawConnectors(){
