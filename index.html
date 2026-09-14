@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ציר זמן אינטראקטיבי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F1E7;
+    --card-bg:#FFFFFF;
+    --border:#E7ABB1;
+    --border-strong:#D9848D;
+    --text:#2B231F;
+    --text-muted:#7A6E67;
+    --maroon:#7A2430;
+    --maroon-dark:#5C1B24;
+    --maroon-text:#FBE7E9;
+    --year:#9C2B36;
+    --line:#E7ABB1;
+    --font-head:'Frank Ruhl Libre', serif;
+    --font-body:'Assistant', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 32px 8px;
+  }
+  .topbar h1{
+    font-family:var(--font-head);
+    font-weight:500;
+    font-size:22px;
+    margin:0;
+  }
+  .era-label{
+    font-size:16px;
+    color:var(--text);
+  }
+
+  /* ---------- overview ---------- */
+  #overview{ padding:8px 32px 24px; flex:1; }
+  .era-group{ margin-bottom:28px; }
+  .era-group h2{
+    font-family:var(--font-head);
+    font-weight:500;
+    font-size:17px;
+    margin:0 0 10px;
+    color:var(--maroon);
+  }
+  .era-row{
+    display:flex;
+    gap:14px;
+    overflow-x:auto;
+    padding-bottom:8px;
+  }
+  .chip{
+    flex:0 0 auto;
+    width:150px;
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    cursor:pointer;
+    text-align:center;
+    transition:border-color .15s, transform .15s;
+  }
+  .chip:hover{ border-color:var(--border-strong); transform:translateY(-2px); }
+  .chip .thumb{
+    width:100%; height:100px;
+    background:#EFE7DA;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); font-size:12px;
+  }
+  .chip .chip-info{ padding:8px 10px; }
+  .chip .chip-title{ font-size:13px; font-weight:600; line-height:1.3; }
+  .chip .chip-year{ font-size:12px; color:var(--year); font-weight:700; margin-top:2px; }
+
+  /* ---------- detail ---------- */
+  #detail{ display:none; flex:1; padding:8px 32px 24px; }
+  .detail-wrap{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    gap:26px;
+    max-width:1100px;
+    margin:0 auto;
+  }
+  .col{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    width:220px;
+    padding-top:40px;
+  }
+  .col-links{ align-items:stretch; }
+  .col-info{ align-items:stretch; }
+
+  .main-col{ display:flex; flex-direction:column; align-items:center; width:340px; }
+  .main-card{
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    width:100%;
+  }
+  .main-card .thumb{
+    width:100%; aspect-ratio:4/5;
+    background:#EFE7DA;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); font-size:13px;
+  }
+  .main-card .cap{
+    text-align:center;
+    padding:12px 10px 14px;
+    border-top:1.5px solid var(--border);
+  }
+  .main-card .cap .he{ font-weight:700; font-size:16px; }
+  .main-card .cap .en{ font-size:13px; color:var(--text-muted); margin-top:2px; }
+  .main-card .cap .yr{ color:var(--year); font-weight:700; margin-inline-start:6px; }
+
+  .back-btn{
+    margin-top:14px;
+    background:var(--card-bg);
+    border:1.5px solid var(--border-strong);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:13px;
+    padding:8px 18px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .back-btn:hover{ background:#FBF3EC; }
+
+  .satellite{
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .satellite .thumb{
+    width:100%; height:90px;
+    background:#EFE7DA;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); font-size:12px;
+  }
+  .satellite .cap{ padding:8px 10px; text-align:center; }
+  .satellite .cap .he{ font-weight:700; font-size:13px; }
+  .satellite .cap .yr{ color:var(--year); font-weight:700; font-size:13px; }
+  .satellite .expand{
+    border-top:1px solid var(--border);
+    padding:8px 10px;
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.5;
+    display:none;
+  }
+  .satellite .chev{ text-align:center; font-size:11px; color:var(--text-muted); padding:2px 0 6px; }
+
+  .info-box{
+    border-radius:10px;
+    padding:12px 14px;
+    cursor:pointer;
+  }
+  .info-box.style-solid{ background:var(--maroon); color:var(--maroon-text); }
+  .info-box.style-outline{ background:var(--card-bg); border:1.5px solid var(--border-strong); color:var(--text); }
+  .info-box .label{ font-weight:700; font-size:13px; margin-bottom:4px; }
+  .info-box .body{
+    font-size:12.5px;
+    line-height:1.6;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .info-box.open .body{ -webkit-line-clamp:unset; }
+  .info-box .chev{ text-align:center; font-size:11px; opacity:.75; margin-top:4px; }
+
+  .connector-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .connector-svg path{ fill:none; stroke:var(--line); stroke-width:1.5; }
+
+  /* ---------- bottom timeline bar ---------- */
+  #timeline-bar{
+    background:var(--maroon);
+    color:#fff;
+    position:sticky;
+    bottom:0;
+    padding:14px 0 10px;
+  }
+  .tl-scroll{
+    display:flex;
+    align-items:flex-end;
+    gap:0;
+    overflow-x:auto;
+    padding:0 32px 6px;
+  }
+  .tick{
+    flex:0 0 auto;
+    width:64px;
+    text-align:center;
+    cursor:pointer;
+    padding-bottom:8px;
+    position:relative;
+  }
+  .tick .yr{ font-size:12px; margin-bottom:6px; opacity:.9; }
+  .tick .mark{
+    width:1.5px; height:14px; background:rgba(255,255,255,.55);
+    margin:0 auto;
+  }
+  .tick.has-item .mark{ height:22px; background:#fff; width:2px; }
+  .tick.current .yr{ font-weight:700; }
+  .tick.current .mark{ background:#fff; height:28px; width:2.5px; }
+  .tick:hover .yr{ opacity:1; }
+
+  @media (max-width: 760px){
+    .detail-wrap{ flex-direction:column; align-items:center; }
+    .col{ width:100%; max-width:340px; flex-direction:row; overflow-x:auto; padding-top:0; }
+    .main-col{ order:-1; }
+    .connector-svg{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>ציר זמן אינטראקטיבי</h1>
+    <div class="era-label" id="era-label"></div>
+  </div>
+
+  <div id="overview"></div>
+
+  <div id="detail">
+    <div class="detail-wrap" id="detail-wrap">
+      <svg class="connector-svg" id="connector-svg"></svg>
+      <div class="col col-links" id="col-links"></div>
+      <div class="main-col" id="main-col"></div>
+      <div class="col col-info" id="col-info"></div>
+    </div>
+  </div>
+
+  <div id="timeline-bar">
+    <div class="tl-scroll" id="tl-scroll"></div>
+  </div>
+
+<script>
+/* ============================================================
+   התוכן של ציר הזמן.
+   כל אובייקט בטבלה = פריט אחד. מבנה השדות תואם בדיוק את
+   עמודות טבלת האקסל שהעברתם, כדי שיהיה קל להמיר אותה בהמשך.
+
+   שדות:
+   id            - מזהה ייחודי (מספר)
+   era           - אחד מ: pre_history | old_age | middle_age | renaissance | new_age | moderna
+   year          - שנה (מספר שלילי = לפנה"ס)
+   type          - primary_image | secondary_image | historical_event | caricature_event
+   hebrew_header - כותרת בעברית
+   english_header- כותרת באנגלית (אופציונלי)
+   image         - קישור לתמונה (אופציונלי, כרגע placeholder)
+   about_item    - טקסט ראשי
+   about_author  - טקסט על היוצר (אופציונלי)
+   text_character/text_historical/text_quote/text_term - טקסטים נוספים (אופציונלי)
+   links         - מערך של id-ים של פריטים קשורים (עד 4)
+   ============================================================ */
+
+const ERA_LABELS = {
+  pre_history: "לפני ההיסטוריה",
+  old_age:     "מהעת העתיקה עד המאה ה-5",
+  middle_age:  "מהמאה ה-5 עד המאה ה-14",
+  renaissance: "מהמאה ה-14 עד המאה ה-18",
+  new_age:     "מהמאה ה-18 עד תחילת המאה ה-20",
+  moderna:     "מהמאה ה-20 ואילך"
+};
+
+const DATA = [
+  {
+    id: 1, era: "renaissance", year: 1452, type: "primary_image",
+    hebrew_header: "לאונרדו דה וינצ׳י", english_header: "Leonardo da Vinci",
+    about_item: "כאן ייכנס תיאור הפריט הראשי — לרוב טקסט על תמונה או אירוע מרכזי.",
+    about_author: "כאן ייכנס תיאור קצר על היוצר/האמן, אם רלוונטי לפריט.",
+    text_quote: "כאן אפשר להוסיף ציטוט רלוונטי מהתקופה או מדמות היסטורית.",
+    links: [2, 3]
+  },
+  {
+    id: 2, era: "renaissance", year: 1487, type: "secondary_image",
+    hebrew_header: "פריט מקושר לדוגמה",
+    about_item: "פריט מסוג secondary_image שמקושר לפריט הראשי דרך השדה links.",
+  },
+  {
+    id: 3, era: "renaissance", year: 1666, type: "secondary_image",
+    hebrew_header: "פריט מקושר נוסף",
+    about_item: "אפשר לקשר עד 4 פריטים בכל כיוון — הקישור יכול להיות גם דו-כיווני.",
+    links: [1]
+  },
+  {
+    id: 4, era: "old_age", year: -470, type: "caricature_event",
+    hebrew_header: "אירוע/תופעה לדוגמה",
+    about_item: "פריט מסוג caricature_event — משמש לתאר תופעה שחוזרת בתקופות שונות.",
+    links: [1]
+  },
+  {
+    id: 5, era: "new_age", year: 1830, type: "historical_event",
+    hebrew_header: "אירוע היסטורי לדוגמה",
+    about_item: "פריט מסוג historical_event — טקסט בלבד, בלי תמונה.",
+  }
+];
+
+/* ============================================================ */
+
+let currentId = null;
+
+function byId(id){ return DATA.find(d => d.id === id); }
+
+function eraTitleFor(item){ return ERA_LABELS[item.era] || ""; }
+
+function typeThumbLabel(item){
+  return item.type === "historical_event" ? "אירוע (ללא תמונה)" : "תמונה";
+}
+
+/* ---------- overview ---------- */
+function renderOverview(){
+  const grouped = {};
+  DATA.slice().sort((a,b)=>a.year-b.year).forEach(item=>{
+    (grouped[item.era] ||= []).push(item);
+  });
+
+  const container = document.getElementById("overview");
+  container.innerHTML = "";
+  Object.keys(ERA_LABELS).forEach(era=>{
+    if(!grouped[era]) return;
+    const group = document.createElement("div");
+    group.className = "era-group";
+    group.innerHTML = `<h2>${ERA_LABELS[era]}</h2>`;
+    const row = document.createElement("div");
+    row.className = "era-row";
+    grouped[era].forEach(item=>{
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.onclick = ()=>openDetail(item.id);
+      chip.innerHTML = `
+        <div class="thumb">${typeThumbLabel(item)}</div>
+        <div class="chip-info">
+          <div class="chip-title">${item.hebrew_header}</div>
+          <div class="chip-year">${item.year}</div>
+        </div>`;
+      row.appendChild(chip);
+    });
+    group.appendChild(row);
+    container.appendChild(group);
+  });
+}
+
+/* ---------- detail ---------- */
+const INFO_FIELDS = [
+  { key:"about_author",   label:"על היוצר", style:"style-solid" },
+  { key:"text_quote",     label:"ציטוט",     style:"style-outline" },
+  { key:"text_character", label:"דמות",       style:"style-outline" },
+  { key:"text_historical",label:"רקע היסטורי",style:"style-outline" },
+  { key:"text_term",      label:"מונח",       style:"style-outline" }
+];
+
+function openDetail(id){
+  currentId = id;
+  document.getElementById("overview").style.display = "none";
+  document.getElementById("detail").style.display = "block";
+  renderDetail();
+  renderTimelineBar();
+}
+
+function backToOverview(){
+  document.getElementById("detail").style.display = "none";
+  document.getElementById("overview").style.display = "block";
+  currentId = null;
+  renderTimelineBar();
+}
+
+function toggleSatellite(el){
+  const box = el.closest(".satellite").querySelector(".expand");
+  box.style.display = box.style.display === "block" ? "none" : "block";
+}
+function toggleInfo(el){
+  el.classList.toggle("open");
+}
+
+function renderDetail(){
+  const item = byId(currentId);
+  document.getElementById("era-label").textContent = eraTitleFor(item);
+
+  // main card
+  document.getElementById("main-col").innerHTML = `
+    <div class="main-card">
+      <div class="thumb">${typeThumbLabel(item)}</div>
+      <div class="cap">
+        <div class="he">${item.hebrew_header}${item.english_header ? " · "+item.english_header : ""}<span class="yr">${item.year}</span></div>
+      </div>
+    </div>
+    <button class="back-btn" onclick="backToOverview()">בחזרה לתקופה</button>
+  `;
+
+  // linked satellites (left column)
+  const linksCol = document.getElementById("col-links");
+  linksCol.innerHTML = "";
+  (item.links || []).forEach(linkedId=>{
+    const linked = byId(linkedId);
+    if(!linked) return;
+    const sat = document.createElement("div");
+    sat.className = "satellite";
+    sat.id = "sat-"+linkedId;
+    sat.innerHTML = `
+      <div onclick="openDetail(${linked.id})">
+        <div class="thumb">${typeThumbLabel(linked)}</div>
+        <div class="cap"><div class="he">${linked.hebrew_header}</div><div class="yr">${linked.year}</div></div>
+      </div>
+      <div class="chev" onclick="toggleSatellite(this)">︿ פרטים</div>
+      <div class="expand">${linked.about_item || ""}</div>
+    `;
+    linksCol.appendChild(sat);
+  });
+
+  // info boxes (right column)
+  const infoCol = document.getElementById("col-info");
+  infoCol.innerHTML = "";
+  INFO_FIELDS.forEach(f=>{
+    if(!item[f.key]) return;
+    const box = document.createElement("div");
+    box.className = "info-box " + f.style;
+    box.id = "info-"+f.key;
+    box.onclick = ()=>toggleInfo(box);
+    box.innerHTML = `
+      <div class="label">${f.label}</div>
+      <div class="body">${item[f.key]}</div>
+      <div class="chev">︿ עוד</div>
+    `;
+    infoCol.appendChild(box);
+  });
+
+  requestAnimationFrame(drawConnectors);
+}
+
+function drawConnectors(){
+  const svg = document.getElementById("connector-svg");
+  const wrap = document.getElementById("detail-wrap");
+  if(window.innerWidth <= 760){ svg.innerHTML=""; return; }
+  const wrapRect = wrap.getBoundingClientRect();
+  const mainCard = document.querySelector("#main-col .main-card");
+  if(!mainCard) return;
+  const mainRect = mainCard.getBoundingClientRect();
+  const mainAnchor = {
+    x: mainRect.left - wrapRect.left,
+    right: mainRect.right - wrapRect.left,
+    y: mainRect.top - wrapRect.top + mainRect.height/2
+  };
+
+  let paths = "";
+  document.querySelectorAll("#col-links .satellite").forEach((sat, i)=>{
+    const r = sat.getBoundingClientRect();
+    const x = r.right - wrapRect.left;
+    const y = r.top - wrapRect.top + 40;
+    paths += `<path d="M${mainAnchor.x} ${mainAnchor.y} C ${(mainAnchor.x+x)/2} ${mainAnchor.y}, ${(mainAnchor.x+x)/2} ${y}, ${x} ${y}"/>`;
+  });
+  document.querySelectorAll("#col-info .info-box").forEach((box)=>{
+    const r = box.getBoundingClientRect();
+    const x = r.left - wrapRect.left;
+    const y = r.top - wrapRect.top + 30;
+    paths += `<path d="M${mainAnchor.right} ${mainAnchor.y} C ${(mainAnchor.right+x)/2} ${mainAnchor.y}, ${(mainAnchor.right+x)/2} ${y}, ${x} ${y}"/>`;
+  });
+  svg.innerHTML = paths;
+}
+window.addEventListener("resize", ()=>{ if(currentId!==null) drawConnectors(); });
+
+/* ---------- bottom timeline bar ---------- */
+function renderTimelineBar(){
+  const years = DATA.map(d=>d.year);
+  const minY = Math.min(...years) - 5;
+  const maxY = Math.max(...years) + 5;
+  const itemYears = new Set(years);
+  const current = currentId !== null ? byId(currentId).year : null;
+
+  const scroll = document.getElementById("tl-scroll");
+  scroll.innerHTML = "";
+  for(let y = maxY; y >= minY; y--){
+    const tick = document.createElement("div");
+    tick.className = "tick";
+    if(itemYears.has(y)) tick.classList.add("has-item");
+    if(y === current) tick.classList.add("current");
+    tick.innerHTML = `<div class="yr">${y}</div><div class="mark"></div>`;
+    if(itemYears.has(y)){
+      const target = DATA.find(d=>d.year===y);
+      tick.onclick = ()=>openDetail(target.id);
+    }
+    scroll.appendChild(tick);
+  }
+  if(current !== null){
+    requestAnimationFrame(()=>{
+      const el = scroll.querySelector(".tick.current");
+      if(el) el.scrollIntoView({inline:"center", block:"nearest"});
+    });
+  }
+}
+
+/* ---------- init ---------- */
+document.getElementById("era-label").textContent = "";
+renderOverview();
+renderTimelineBar();
+</script>
+</body>
+</html>
