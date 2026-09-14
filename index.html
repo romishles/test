@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ציר זמן אינטראקטיבי</title>
+<title>ציר זמן היסטורי של הקריקטורה</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,78 +20,218 @@
     --maroon-text:#FBE7E9;
     --year:#9C2B36;
     --line:#E7ABB1;
+    --tag-blue-border:#8FADCB;
+    --tag-blue-bg:#EEF3F8;
     --font-head:'Frank Ruhl Libre', serif;
     --font-body:'Assistant', sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0;height:100%;}
   body{
     background:var(--bg);
     color:var(--text);
     font-family:var(--font-body);
-    min-height:100vh;
+    height:100vh;
+    overflow:hidden;
     display:flex;
     flex-direction:column;
   }
+  button{ font-family:var(--font-body); }
 
-  /* ---------- top bar ---------- */
-  .topbar{
+  /* ============================================================
+     LANDING VIEW — one column per era
+     ============================================================ */
+  #landing{
+    flex:1;
     display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:20px 32px 8px;
+    flex-direction:column;
   }
-  .topbar h1{
+  #landing .landing-title{
+    padding:22px 32px 10px;
     font-family:var(--font-head);
     font-weight:500;
     font-size:22px;
-    margin:0;
+    text-align:left;
   }
-  .era-label{
-    font-size:16px;
-    color:var(--text);
-  }
-
-  /* ---------- overview ---------- */
-  #overview{ padding:8px 32px 24px; flex:1; }
-  .era-group{ margin-bottom:28px; }
-  .era-group h2{
-    font-family:var(--font-head);
-    font-weight:500;
-    font-size:17px;
-    margin:0 0 10px;
-    color:var(--maroon);
-  }
-  .era-row{
+  #landing .landing-title b{ color:var(--maroon); }
+  .era-columns{
+    flex:1;
     display:flex;
-    gap:14px;
-    overflow-x:auto;
-    padding-bottom:8px;
   }
-  .chip{
-    flex:0 0 auto;
-    width:150px;
+  .era-col{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    cursor:pointer;
+    border-inline-start:1px solid #E4DDCE;
+    transition:background .15s;
+  }
+  .era-col:hover{ background:#EFE8D9; }
+  .era-col .collage{
+    flex:1;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .era-col .collage .swatch{
+    position:absolute;
+    width:120px; height:150px;
     background:var(--card-bg);
     border:1.5px solid var(--border);
-    border-radius:10px;
+    border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted);
+    font-size:11px;
+    box-shadow:0 2px 10px rgba(0,0,0,.06);
+  }
+  .era-col .collage .swatch.s2{ transform:translate(-34px,18px) rotate(-4deg); }
+  .era-col .collage .swatch.s3{ transform:translate(30px,34px) rotate(3deg); z-index:1;}
+  .era-col .bar{
+    padding:16px 8px;
+    text-align:center;
+    color:#fff;
+    font-weight:700;
+    font-size:15px;
+  }
+
+  /* ============================================================
+     TIMELINE VIEW — pannable / zoomable year axis
+     ============================================================ */
+  #timeline-view{ display:none; flex:1; flex-direction:column; min-height:0; }
+  .tl-header{
+    padding:18px 32px 6px;
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    font-size:15px;
+  }
+  .tl-header b{ font-family:var(--font-head); font-weight:500; font-size:18px; }
+  .tl-header .muted{ color:var(--text-muted); }
+
+  .tl-body{ flex:1; display:flex; min-height:0; position:relative; }
+  .era-tabs{
+    display:flex; flex-direction:column;
+    width:34px;
+    z-index:5;
+  }
+  .era-tabs .tab{
+    flex:1;
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    writing-mode:vertical-rl;
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .era-tabs .tab.active{ outline:2px solid #fff; outline-offset:-4px; }
+
+  .tl-canvas{
+    flex:1;
+    position:relative;
     overflow:hidden;
+    cursor:grab;
+    user-select:none;
+  }
+  .tl-canvas.dragging{ cursor:grabbing; }
+  .tl-track{
+    position:absolute;
+    top:0; bottom:0; left:0;
+    height:100%;
+  }
+  .tl-axis{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:58px;
+    background:var(--maroon);
+  }
+  .tl-tick{
+    position:absolute;
+    bottom:0;
+    width:1px; height:14px;
+    background:rgba(255,255,255,.55);
+    transform:translateX(-50%);
+  }
+  .tl-tick .lbl{
+    position:absolute;
+    bottom:18px; left:50%;
+    transform:translateX(-50%);
+    color:#fff; font-size:12px; white-space:nowrap;
+  }
+  .tl-item{
+    position:absolute;
+    bottom:66px;
+    width:96px;
+    transform:translateX(-50%);
     cursor:pointer;
     text-align:center;
-    transition:border-color .15s, transform .15s;
   }
-  .chip:hover{ border-color:var(--border-strong); transform:translateY(-2px); }
-  .chip .thumb{
-    width:100%; height:100px;
-    background:#EFE7DA;
+  .tl-item .thumb{
+    width:96px; height:120px;
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    border-radius:6px;
     display:flex; align-items:center; justify-content:center;
-    color:var(--text-muted); font-size:12px;
+    color:var(--text-muted); font-size:11px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
   }
-  .chip .chip-info{ padding:8px 10px; }
-  .chip .chip-title{ font-size:13px; font-weight:600; line-height:1.3; }
-  .chip .chip-year{ font-size:12px; color:var(--year); font-weight:700; margin-top:2px; }
+  .tl-item .yr{
+    margin-top:4px;
+    font-size:12px; font-weight:700; color:var(--year);
+    background:var(--card-bg);
+    display:inline-block; padding:1px 6px; border-radius:4px;
+  }
+  .tl-item:hover .thumb{ border-color:var(--border-strong); }
 
-  /* ---------- detail ---------- */
-  #detail{ display:none; flex:1; padding:8px 32px 24px; }
+  .tl-tag{
+    position:absolute;
+    top:calc(100% - 40px);
+    transform:translateX(-50%);
+    background:var(--tag-blue-bg);
+    border:1.5px solid var(--tag-blue-border);
+    border-radius:6px;
+    padding:5px 9px;
+    font-size:12px;
+    white-space:nowrap;
+    cursor:pointer;
+  }
+  .tl-tag b{ color:var(--maroon); margin-inline-end:4px; }
+  .tl-tag:hover{ border-color:#5C84AD; }
+
+  .tl-toolbar{
+    position:absolute;
+    bottom:14px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.92);
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    padding:6px 8px;
+    z-index:6;
+  }
+  .tl-toolbar button{
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    border-radius:6px;
+    width:30px; height:30px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .tl-toolbar button:hover{ background:#FBF3EC; }
+  .tl-toolbar .pct{ font-size:12px; width:42px; text-align:center; color:var(--text-muted); }
+  .tl-toolbar .sep{ width:1px; height:20px; background:var(--border); margin:0 4px; }
+  .tl-toolbar .overview-btn{ width:auto; padding:0 12px; font-size:13px; }
+  .tl-help-pop{
+    position:absolute; bottom:52px; left:50%; transform:translateX(-50%);
+    background:var(--maroon); color:#fff; font-size:12.5px;
+    padding:10px 14px; border-radius:8px; width:240px; text-align:center;
+    display:none; line-height:1.5;
+  }
+
+  /* ============================================================
+     DETAIL VIEW
+     ============================================================ */
+  #detail{ display:none; flex:1; padding:8px 32px 24px; position:relative; min-height:0; }
   .detail-wrap{
     position:relative;
     display:flex;
@@ -101,16 +241,7 @@
     max-width:1100px;
     margin:0 auto;
   }
-  .col{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-    width:220px;
-    padding-top:40px;
-  }
-  .col-links{ align-items:stretch; }
-  .col-info{ align-items:stretch; }
-
+  .col{ display:flex; flex-direction:column; gap:18px; width:220px; padding-top:40px; }
   .main-col{ display:flex; flex-direction:column; align-items:center; width:340px; }
   .main-card{
     background:var(--card-bg);
@@ -125,13 +256,8 @@
     display:flex; align-items:center; justify-content:center;
     color:var(--text-muted); font-size:13px;
   }
-  .main-card .cap{
-    text-align:center;
-    padding:12px 10px 14px;
-    border-top:1.5px solid var(--border);
-  }
+  .main-card .cap{ text-align:center; padding:12px 10px 14px; border-top:1.5px solid var(--border); }
   .main-card .cap .he{ font-weight:700; font-size:16px; }
-  .main-card .cap .en{ font-size:13px; color:var(--text-muted); margin-top:2px; }
   .main-card .cap .yr{ color:var(--year); font-weight:700; margin-inline-start:6px; }
 
   .back-btn{
@@ -139,7 +265,6 @@
     background:var(--card-bg);
     border:1.5px solid var(--border-strong);
     color:var(--text);
-    font-family:var(--font-body);
     font-size:13px;
     padding:8px 18px;
     border-radius:8px;
@@ -155,8 +280,7 @@
     cursor:pointer;
   }
   .satellite .thumb{
-    width:100%; height:90px;
-    background:#EFE7DA;
+    width:100%; height:90px; background:#EFE7DA;
     display:flex; align-items:center; justify-content:center;
     color:var(--text-muted); font-size:12px;
   }
@@ -164,30 +288,26 @@
   .satellite .cap .he{ font-weight:700; font-size:13px; }
   .satellite .cap .yr{ color:var(--year); font-weight:700; font-size:13px; }
   .satellite .expand{
-    border-top:1px solid var(--border);
-    padding:8px 10px;
-    font-size:12px;
-    color:var(--text-muted);
-    line-height:1.5;
-    display:none;
+    border-top:1px solid var(--border); padding:8px 10px;
+    font-size:12px; color:var(--text-muted); line-height:1.5; display:none;
   }
   .satellite .chev{ text-align:center; font-size:11px; color:var(--text-muted); padding:2px 0 6px; }
 
-  .info-box{
-    border-radius:10px;
-    padding:12px 14px;
-    cursor:pointer;
+  .satellite.tag-style{
+    background:var(--tag-blue-bg);
+    border:1.5px solid var(--tag-blue-border);
+    padding:10px 12px;
   }
+  .satellite.tag-style .cap{ padding:0 0 4px; text-align:right; }
+  .satellite.tag-style .expand{ border-top:1px solid var(--tag-blue-border); padding-top:8px; }
+
+  .info-box{ border-radius:10px; padding:12px 14px; cursor:pointer; }
   .info-box.style-solid{ background:var(--maroon); color:var(--maroon-text); }
   .info-box.style-outline{ background:var(--card-bg); border:1.5px solid var(--border-strong); color:var(--text); }
   .info-box .label{ font-weight:700; font-size:13px; margin-bottom:4px; }
   .info-box .body{
-    font-size:12.5px;
-    line-height:1.6;
-    display:-webkit-box;
-    -webkit-line-clamp:3;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
+    font-size:12.5px; line-height:1.6;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
   }
   .info-box.open .body{ -webkit-line-clamp:unset; }
   .info-box .chev{ text-align:center; font-size:11px; opacity:.75; margin-top:4px; }
@@ -195,72 +315,88 @@
   .connector-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:0; transition:opacity .3s ease; }
   .connector-svg path{ fill:none; stroke:var(--line); stroke-width:1.5; }
 
-  /* ---------- transitions between focused items ---------- */
   .main-card, .satellite{ will-change:transform; }
-  .enter-anim{
-    opacity:0;
-    transform:translateY(10px);
-    animation:enterFade .38s ease forwards;
-    animation-delay:.3s;
-  }
+  .enter-anim{ opacity:0; transform:translateY(10px); animation:enterFade .38s ease forwards; animation-delay:.3s; }
   @keyframes enterFade{ to{ opacity:1; transform:none; } }
-  .exit-clone{
-    position:fixed;
-    pointer-events:none;
-    z-index:500;
-    margin:0;
-  }
+  .exit-clone{ position:fixed; pointer-events:none; z-index:500; margin:0; }
 
-  /* ---------- bottom timeline bar ---------- */
-  #timeline-bar{
-    background:var(--maroon);
-    color:#fff;
-    position:sticky;
-    bottom:0;
-    padding:14px 0 10px;
+  /* chronological prev/next peeking at screen edges */
+  .edge-peek{
+    position:fixed; top:50%; transform:translateY(-50%);
+    width:130px; z-index:20; cursor:pointer;
+    opacity:.85;
+    transition:opacity .15s;
   }
-  .tl-scroll{
-    display:flex;
-    align-items:flex-end;
-    gap:0;
-    overflow-x:auto;
-    padding:0 32px 6px;
+  .edge-peek:hover{ opacity:1; }
+  .edge-peek .thumb{
+    width:100%; aspect-ratio:4/5; background:#EFE7DA;
+    border:1.5px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); font-size:11px;
   }
-  .tick{
-    flex:0 0 auto;
-    width:64px;
-    text-align:center;
-    cursor:pointer;
-    padding-bottom:8px;
+  .edge-peek .yr{ text-align:center; font-size:11px; font-weight:700; color:var(--year); margin-top:4px; }
+  .edge-peek.left{ left:0; transform:translate(-46%,-50%); }
+  .edge-peek.right{ right:0; transform:translate(46%,-50%); }
+
+  /* mini local axis at bottom of detail view */
+  #detail-mini-axis{
     position:relative;
+    height:64px;
+    margin-top:18px;
+    background:var(--maroon);
+    border-radius:6px;
+    overflow:hidden;
   }
-  .tick .yr{ font-size:12px; margin-bottom:6px; opacity:.9; }
-  .tick .mark{
-    width:1.5px; height:14px; background:rgba(255,255,255,.55);
-    margin:0 auto;
+  .mini-tick{
+    position:absolute; bottom:0; width:1px; height:12px;
+    background:rgba(255,255,255,.5); transform:translateX(-50%);
   }
-  .tick.has-item .mark{ height:22px; background:#fff; width:2px; }
-  .tick.current .yr{ font-weight:700; }
-  .tick.current .mark{ background:#fff; height:28px; width:2.5px; }
-  .tick:hover .yr{ opacity:1; }
+  .mini-tick .lbl{
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    color:#fff; font-size:11px; white-space:nowrap;
+  }
+  .mini-tick.current{ height:24px; width:2px; background:#fff; }
+  .mini-tick.current .lbl{ font-weight:700; bottom:28px; }
 
   @media (max-width: 760px){
     .detail-wrap{ flex-direction:column; align-items:center; }
     .col{ width:100%; max-width:340px; flex-direction:row; overflow-x:auto; padding-top:0; }
     .main-col{ order:-1; }
     .connector-svg{ display:none; }
+    .edge-peek{ display:none; }
   }
 </style>
 </head>
 <body>
 
-  <div class="topbar">
-    <h1>ציר זמן אינטראקטיבי</h1>
-    <div class="era-label" id="era-label"></div>
+  <!-- ===================== LANDING ===================== -->
+  <div id="landing">
+    <div class="landing-title"><b>ציר זמן היסטורי</b> — מבט על</div>
+    <div class="era-columns" id="era-columns"></div>
   </div>
 
-  <div id="overview"></div>
+  <!-- ===================== TIMELINE ===================== -->
+  <div id="timeline-view">
+    <div class="tl-header"><b id="tl-era-name"></b><span class="muted" id="tl-era-range"></span></div>
+    <div class="tl-body">
+      <div class="era-tabs" id="era-tabs"></div>
+      <div class="tl-canvas" id="tl-canvas">
+        <div class="tl-track" id="tl-track"></div>
+      </div>
+      <div class="tl-toolbar">
+        <button id="tl-help-btn" title="עזרה">?</button>
+        <div class="sep"></div>
+        <button id="tl-zoom-out" title="התרחקות">−</button>
+        <div class="pct" id="tl-pct">100%</div>
+        <button id="tl-zoom-in" title="התקרבות">+</button>
+        <div class="sep"></div>
+        <button class="overview-btn" id="tl-overview-btn">מבט על</button>
+      </div>
+      <div class="tl-help-pop" id="tl-help-pop">גררו את הציר האדום כדי לנווט בזמן, ולחצו +/- כדי להתקרב ולהתרחק. לחצו על פריט כדי לפתוח אותו.</div>
+    </div>
+  </div>
 
+  <!-- ===================== DETAIL ===================== -->
   <div id="detail">
     <div class="detail-wrap" id="detail-wrap">
       <svg class="connector-svg" id="connector-svg"></svg>
@@ -268,41 +404,13 @@
       <div class="main-col" id="main-col"></div>
       <div class="col col-info" id="col-info"></div>
     </div>
-  </div>
-
-  <div id="timeline-bar">
-    <div class="tl-scroll" id="tl-scroll"></div>
+    <div id="detail-mini-axis"></div>
   </div>
 
 <script>
 /* ============================================================
-   התוכן של ציר הזמן.
-   כל אובייקט בטבלה = פריט אחד. מבנה השדות תואם בדיוק את
-   עמודות טבלת האקסל שהעברתם, כדי שיהיה קל להמיר אותה בהמשך.
-
-   שדות:
-   id            - מזהה ייחודי (מספר)
-   era           - אחד מ: pre_history | old_age | middle_age | renaissance | new_age | moderna
-   year          - שנה (מספר שלילי = לפנה"ס)
-   type          - primary_image | secondary_image | historical_event | caricature_event
-   hebrew_header - כותרת בעברית
-   english_header- כותרת באנגלית (אופציונלי)
-   image         - קישור לתמונה (אופציונלי, כרגע placeholder)
-   about_item    - טקסט ראשי
-   about_author  - טקסט על היוצר (אופציונלי)
-   text_character/text_historical/text_quote/text_term - טקסטים נוספים (אופציונלי)
-   links         - מערך של id-ים של פריטים קשורים (עד 4)
+   DATA — converted directly from your Excel table.
    ============================================================ */
-
-const ERA_LABELS = {
-  pre_history: "לפני ההיסטוריה",
-  old_age:     "מהעת העתיקה עד המאה ה-5",
-  middle_age:  "מהמאה ה-5 עד המאה ה-14",
-  renaissance: "מהמאה ה-14 עד המאה ה-18",
-  new_age:     "מהמאה ה-18 עד תחילת המאה ה-20",
-  moderna:     "מהמאה ה-20 ואילך"
-};
-
 const DATA = [
   {
     "id": 1,
@@ -1696,52 +1804,200 @@ const DATA = [
   }
 ];
 
-/* ============================================================ */
+const ERA_ORDER = ["pre_history","old_age","middle_age","renaissance","new_age","moderna"];
+const ERA_NAMES = {
+  pre_history:"פרה היסטוריה", old_age:"העת העתיקה", middle_age:"ימי הביניים",
+  renaissance:"רנסנס", new_age:"העת החדשה", moderna:"מודרנה"
+};
+/* dark (ancient) -> bright (modern), matching the reference screenshot */
+const ERA_COLORS = {
+  pre_history:"#4A1319", old_age:"#641B23", middle_age:"#7E222C",
+  renaissance:"#9C2B36", new_age:"#B93038", moderna:"#D63A3F"
+};
 
+/* ---------- shared helpers ---------- */
+function byId(id){ return DATA.find(d => d.id === id); }
+function hasImage(item){ return item.type !== "historical_event"; }
+function typeThumbLabel(item){ return hasImage(item) ? "תמונה" : "אירוע"; }
+
+function centuryLabel(year){
+  const bce = year < 0;
+  const y = Math.abs(year);
+  const century = Math.max(1, Math.ceil(y / 100));
+  return bce ? `המאה ה-${century} לפנה"ס` : `המאה ה-${century}`;
+}
+
+const ERA_RANGES = {};
+ERA_ORDER.forEach(era=>{
+  const years = DATA.filter(d=>d.era===era).map(d=>d.year);
+  if(years.length) ERA_RANGES[era] = { min: Math.min(...years), max: Math.max(...years) };
+});
+function eraRangeLabel(era){
+  const r = ERA_RANGES[era];
+  if(!r) return "";
+  return `מ${centuryLabel(r.min)} עד ${centuryLabel(r.max)}`;
+}
+
+const ALL_YEARS = DATA.map(d=>d.year);
+const GLOBAL_MIN = Math.min(...ALL_YEARS);
+const GLOBAL_MAX = Math.max(...ALL_YEARS);
+const SORTED_BY_YEAR = DATA.slice().sort((a,b)=>a.year-b.year);
+
+function niceInterval(pxPerYear, targetPx){
+  const options = [1,2,5,10,25,50,100,200,250,500,1000,2000,5000];
+  let best = options[options.length-1];
+  for(const o of options){ if(o*pxPerYear >= targetPx){ best = o; break; } }
+  return best;
+}
+
+/* ============================================================
+   VIEW SWITCHING
+   ============================================================ */
 let currentId = null;
 
-function byId(id){ return DATA.find(d => d.id === id); }
-
-function eraTitleFor(item){ return ERA_LABELS[item.era] || ""; }
-
-function typeThumbLabel(item){
-  return item.type === "historical_event" ? "אירוע (ללא תמונה)" : "תמונה";
+function setView(name){
+  document.getElementById("landing").style.display = name==="landing" ? "flex" : "none";
+  document.getElementById("timeline-view").style.display = name==="timeline" ? "flex" : "none";
+  document.getElementById("detail").style.display = name==="detail" ? "block" : "none";
+  if(name !== "detail") document.querySelectorAll(".edge-peek").forEach(el=>el.remove());
 }
 
-/* ---------- overview ---------- */
-function renderOverview(){
-  const grouped = {};
-  DATA.slice().sort((a,b)=>a.year-b.year).forEach(item=>{
-    (grouped[item.era] ||= []).push(item);
+/* ============================================================
+   LANDING VIEW
+   ============================================================ */
+function renderLanding(){
+  const wrap = document.getElementById("era-columns");
+  wrap.innerHTML = "";
+  ERA_ORDER.forEach(era=>{
+    const col = document.createElement("div");
+    col.className = "era-col";
+    col.onclick = ()=>openTimeline(era);
+    col.innerHTML = `
+      <div class="collage">
+        <div class="swatch s3">תמונה</div>
+        <div class="swatch s2">תמונה</div>
+        <div class="swatch">תמונה</div>
+      </div>
+      <div class="bar" style="background:${ERA_COLORS[era]}">${ERA_NAMES[era]}</div>
+    `;
+    wrap.appendChild(col);
   });
+}
 
-  const container = document.getElementById("overview");
-  container.innerHTML = "";
-  Object.keys(ERA_LABELS).forEach(era=>{
-    if(!grouped[era]) return;
-    const group = document.createElement("div");
-    group.className = "era-group";
-    group.innerHTML = `<h2>${ERA_LABELS[era]}</h2>`;
-    const row = document.createElement("div");
-    row.className = "era-row";
-    grouped[era].forEach(item=>{
-      const chip = document.createElement("div");
-      chip.className = "chip";
-      chip.onclick = ()=>openDetail(item.id);
-      chip.innerHTML = `
+/* ============================================================
+   TIMELINE VIEW (pan + zoom)
+   ============================================================ */
+const BASE_SCALE = 0.55;      // px per year == "100%"
+let tlScale = BASE_SCALE;
+let centerYear = (GLOBAL_MIN+GLOBAL_MAX)/2;
+let currentEra = null;
+const TRACK_MIN = GLOBAL_MIN - 80;
+const TRACK_MAX = GLOBAL_MAX + 80;
+
+function yearToX(year){ return (TRACK_MAX - year) * tlScale; }
+
+function openTimeline(era){
+  currentEra = era;
+  if(ERA_RANGES[era]) centerYear = (ERA_RANGES[era].min + ERA_RANGES[era].max)/2;
+  currentId = null;
+  setView("timeline");
+  renderEraTabs();
+  renderTimelineHeader();
+  requestAnimationFrame(renderTrack);
+}
+
+function renderEraTabs(){
+  const wrap = document.getElementById("era-tabs");
+  wrap.innerHTML = "";
+  ERA_ORDER.slice().reverse().forEach(era=>{
+    const tab = document.createElement("div");
+    tab.className = "tab" + (era===currentEra ? " active" : "");
+    tab.style.background = ERA_COLORS[era];
+    tab.textContent = ERA_NAMES[era];
+    tab.onclick = ()=>{ currentEra = era; if(ERA_RANGES[era]) centerYear=(ERA_RANGES[era].min+ERA_RANGES[era].max)/2; renderEraTabs(); renderTimelineHeader(); renderTrack(); };
+    wrap.appendChild(tab);
+  });
+}
+
+function renderTimelineHeader(){
+  document.getElementById("tl-era-name").textContent = currentEra ? ERA_NAMES[currentEra] : "";
+  document.getElementById("tl-era-range").textContent = currentEra ? "  " + eraRangeLabel(currentEra) : "";
+}
+
+function renderTrack(){
+  const canvas = document.getElementById("tl-canvas");
+  const track = document.getElementById("tl-track");
+  const canvasW = canvas.clientWidth;
+  const totalWidth = yearToX(TRACK_MIN);
+  track.style.width = totalWidth + "px";
+
+  let html = `<div class="tl-axis"></div>`;
+
+  const interval = niceInterval(tlScale, 70);
+  const startY = Math.ceil(TRACK_MIN/interval)*interval;
+  for(let y=startY; y<=TRACK_MAX; y+=interval){
+    const x = yearToX(y);
+    html += `<div class="tl-tick" style="left:${x}px"><div class="lbl">${y}</div></div>`;
+  }
+
+  DATA.forEach(item=>{
+    const x = yearToX(item.year);
+    if(hasImage(item)){
+      html += `<div class="tl-item" style="left:${x}px" onclick="openDetail(${item.id})">
         <div class="thumb">${typeThumbLabel(item)}</div>
-        <div class="chip-info">
-          <div class="chip-title">${item.hebrew_header}</div>
-          <div class="chip-year">${item.year}</div>
-        </div>`;
-      row.appendChild(chip);
-    });
-    group.appendChild(row);
-    container.appendChild(group);
+        <div class="yr">${item.hebrew_header} · ${item.year}</div>
+      </div>`;
+    } else {
+      html += `<div class="tl-tag" style="left:${x}px" onclick="openDetail(${item.id})"><b>${item.year}</b>${item.hebrew_header}</div>`;
+    }
   });
+
+  track.innerHTML = html;
+
+  const offset = canvasW/2 - yearToX(centerYear);
+  track.style.transform = `translateX(${offset}px)`;
+
+  document.getElementById("tl-pct").textContent = Math.round((tlScale/BASE_SCALE)*100) + "%";
 }
 
-/* ---------- detail ---------- */
+function xToYear(offsetPx, canvasW){
+  const xAtCenter = canvasW/2 - offsetPx;
+  return TRACK_MAX - xAtCenter/tlScale;
+}
+
+/* dragging to pan */
+(function initDrag(){
+  const canvas = document.getElementById("tl-canvas");
+  let dragging=false, startX=0, startCenter=0;
+  canvas.addEventListener("pointerdown", e=>{
+    dragging=true; startX=e.clientX; startCenter=centerYear;
+    canvas.classList.add("dragging");
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", e=>{
+    if(!dragging) return;
+    const dx = e.clientX - startX;
+    centerYear = startCenter - dx/tlScale;
+    centerYear = Math.max(TRACK_MIN, Math.min(TRACK_MAX, centerYear));
+    renderTrack();
+  });
+  function stop(){ dragging=false; canvas.classList.remove("dragging"); }
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointerleave", stop);
+})();
+
+document.getElementById("tl-zoom-in").onclick = ()=>{ tlScale = Math.min(tlScale*1.4, 12); renderTrack(); };
+document.getElementById("tl-zoom-out").onclick = ()=>{ tlScale = Math.max(tlScale/1.4, 0.03); renderTrack(); };
+document.getElementById("tl-overview-btn").onclick = ()=>{ setView("landing"); };
+document.getElementById("tl-help-btn").onclick = ()=>{
+  const pop = document.getElementById("tl-help-pop");
+  pop.style.display = pop.style.display==="block" ? "none" : "block";
+};
+window.addEventListener("resize", ()=>{ if(document.getElementById("timeline-view").style.display!=="none") renderTrack(); });
+
+/* ============================================================
+   DETAIL VIEW
+   ============================================================ */
 const INFO_FIELDS = [
   { key:"about_author",   label:"על היוצר", style:"style-solid" },
   { key:"text_quote",     label:"ציטוט",     style:"style-outline" },
@@ -1759,9 +2015,6 @@ function openDetail(id){
 
   if(wasOpen){
     firstRects = captureRects();
-
-    // if the outgoing main card won't be reused as a satellite of the new item,
-    // clone it now (before we destroy it) so we can animate it "moving away"
     const newItem = byId(id);
     const willBeReused = newItem && (newItem.links || []).includes(prevItem.id);
     if(!willBeReused){
@@ -1780,14 +2033,10 @@ function openDetail(id){
   }
 
   currentId = id;
-  document.getElementById("overview").style.display = "none";
-  document.getElementById("detail").style.display = "block";
+  setView("detail");
   renderDetail();
-  renderTimelineBar();
 
-  if(wasOpen){
-    playTransition(firstRects, prevItem);
-  }
+  if(wasOpen) playTransition(firstRects, prevItem);
   if(exitClone){
     requestAnimationFrame(()=>{
       exitClone.style.transition = "transform .38s ease, opacity .38s ease";
@@ -1798,8 +2047,17 @@ function openDetail(id){
   }
 }
 
-/* capture on-screen positions of the currently visible main card + satellites,
-   keyed by item id, so we can FLIP-animate them into their new positions */
+function backToTimeline(){
+  const item = byId(currentId);
+  setView("timeline");
+  currentEra = item ? item.era : currentEra;
+  centerYear = item ? item.year : centerYear;
+  currentId = null;
+  renderEraTabs();
+  renderTimelineHeader();
+  requestAnimationFrame(renderTrack);
+}
+
 function captureRects(){
   const map = {};
   if(currentId !== null){
@@ -1812,43 +2070,27 @@ function captureRects(){
   return map;
 }
 
-/* animate every element that existed before (by item id) from its old rect
-   into its new layout position/size; anything brand new fades in afterward */
 function playTransition(firstRects, prevItem){
   const usedIds = new Set();
-
   const mainCard = document.querySelector("#main-col .main-card");
   if(mainCard){
-    if(firstRects[currentId]){
-      flipElement(mainCard, firstRects[currentId]);
-      usedIds.add(currentId);
-    } else {
-      mainCard.classList.add("enter-anim");
-    }
+    if(firstRects[currentId]){ flipElement(mainCard, firstRects[currentId]); usedIds.add(currentId); }
+    else mainCard.classList.add("enter-anim");
   }
-
   document.querySelectorAll("#col-links .satellite").forEach(sat=>{
     const id = parseInt(sat.dataset.id);
-    if(firstRects[id] !== undefined && !usedIds.has(id)){
-      flipElement(sat, firstRects[id]);
-      usedIds.add(id);
-    } else {
-      sat.classList.add("enter-anim");
-    }
+    if(firstRects[id] !== undefined && !usedIds.has(id)){ flipElement(sat, firstRects[id]); usedIds.add(id); }
+    else sat.classList.add("enter-anim");
   });
-
-  // text/quote boxes and connection lines always appear fresh, after the cards settle
   document.querySelectorAll("#col-info .info-box").forEach(box=>box.classList.add("enter-anim"));
 }
 
-/* classic FLIP: jump the element back to where it visually was (no transition),
-   then release it so the browser animates it to its real, final position */
 function flipElement(el, firstRect){
   const last = el.getBoundingClientRect();
   const dx = firstRect.left - last.left;
   const dy = firstRect.top - last.top;
-  const sx = last.width ? firstRect.width / last.width : 1;
-  const sy = last.height ? firstRect.height / last.height : 1;
+  const sx = last.width ? firstRect.width/last.width : 1;
+  const sy = last.height ? firstRect.height/last.height : 1;
   el.style.transition = "none";
   el.style.transformOrigin = "top left";
   el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
@@ -1858,26 +2100,15 @@ function flipElement(el, firstRect){
   });
 }
 
-function backToOverview(){
-  document.getElementById("detail").style.display = "none";
-  document.getElementById("overview").style.display = "block";
-  currentId = null;
-  renderTimelineBar();
-}
-
 function toggleSatellite(el){
   const box = el.closest(".satellite").querySelector(".expand");
   box.style.display = box.style.display === "block" ? "none" : "block";
 }
-function toggleInfo(el){
-  el.classList.toggle("open");
-}
+function toggleInfo(el){ el.classList.toggle("open"); }
 
 function renderDetail(){
   const item = byId(currentId);
-  document.getElementById("era-label").textContent = eraTitleFor(item);
 
-  // main card
   document.getElementById("main-col").innerHTML = `
     <div class="main-card">
       <div class="thumb">${typeThumbLabel(item)}</div>
@@ -1885,20 +2116,26 @@ function renderDetail(){
         <div class="he">${item.hebrew_header}${item.english_header ? " · "+item.english_header : ""}<span class="yr">${item.year}</span></div>
       </div>
     </div>
-    <button class="back-btn" onclick="backToOverview()">בחזרה לתקופה</button>
+    <button class="back-btn" onclick="backToTimeline()">בחזרה לתקופה</button>
   `;
 
-  // linked satellites (left column)
   const linksCol = document.getElementById("col-links");
   linksCol.innerHTML = "";
   (item.links || []).forEach(linkedId=>{
     const linked = byId(linkedId);
     if(!linked) return;
     const sat = document.createElement("div");
-    sat.className = "satellite";
+    const isTag = !hasImage(linked);
+    sat.className = "satellite" + (isTag ? " tag-style" : "");
     sat.id = "sat-"+linkedId;
     sat.dataset.id = linkedId;
-    sat.innerHTML = `
+    sat.innerHTML = isTag ? `
+      <div onclick="openDetail(${linked.id})">
+        <div class="cap"><span class="yr">${linked.year}</span> <span class="he">${linked.hebrew_header}</span></div>
+      </div>
+      <div class="chev" onclick="toggleSatellite(this)">︿ פרטים</div>
+      <div class="expand">${linked.about_item || ""}</div>
+    ` : `
       <div onclick="openDetail(${linked.id})">
         <div class="thumb">${typeThumbLabel(linked)}</div>
         <div class="cap"><div class="he">${linked.hebrew_header}</div><div class="yr">${linked.year}</div></div>
@@ -1909,22 +2146,19 @@ function renderDetail(){
     linksCol.appendChild(sat);
   });
 
-  // info boxes (right column)
   const infoCol = document.getElementById("col-info");
   infoCol.innerHTML = "";
   INFO_FIELDS.forEach(f=>{
     if(!item[f.key]) return;
     const box = document.createElement("div");
     box.className = "info-box " + f.style;
-    box.id = "info-"+f.key;
     box.onclick = ()=>toggleInfo(box);
-    box.innerHTML = `
-      <div class="label">${f.label}</div>
-      <div class="body">${item[f.key]}</div>
-      <div class="chev">︿ עוד</div>
-    `;
+    box.innerHTML = `<div class="label">${f.label}</div><div class="body">${item[f.key]}</div><div class="chev">︿ עוד</div>`;
     infoCol.appendChild(box);
   });
+
+  renderEdgePeeks(item);
+  renderMiniAxis(item);
 
   const svg = document.getElementById("connector-svg");
   svg.style.opacity = "0";
@@ -1945,15 +2179,14 @@ function drawConnectors(){
     right: mainRect.right - wrapRect.left,
     y: mainRect.top - wrapRect.top + mainRect.height/2
   };
-
   let paths = "";
-  document.querySelectorAll("#col-links .satellite").forEach((sat, i)=>{
+  document.querySelectorAll("#col-links .satellite").forEach(sat=>{
     const r = sat.getBoundingClientRect();
     const x = r.right - wrapRect.left;
     const y = r.top - wrapRect.top + 40;
     paths += `<path d="M${mainAnchor.x} ${mainAnchor.y} C ${(mainAnchor.x+x)/2} ${mainAnchor.y}, ${(mainAnchor.x+x)/2} ${y}, ${x} ${y}"/>`;
   });
-  document.querySelectorAll("#col-info .info-box").forEach((box)=>{
+  document.querySelectorAll("#col-info .info-box").forEach(box=>{
     const r = box.getBoundingClientRect();
     const x = r.left - wrapRect.left;
     const y = r.top - wrapRect.top + 30;
@@ -1961,42 +2194,50 @@ function drawConnectors(){
   });
   svg.innerHTML = paths;
 }
-window.addEventListener("resize", ()=>{ if(currentId!==null) drawConnectors(); });
 
-/* ---------- bottom timeline bar ---------- */
-function renderTimelineBar(){
-  const years = DATA.map(d=>d.year);
-  const minY = Math.min(...years) - 5;
-  const maxY = Math.max(...years) + 5;
-  const itemYears = new Set(years);
-  const current = currentId !== null ? byId(currentId).year : null;
+/* ---------- chronological prev/next, peeking at the screen edges ---------- */
+function renderEdgePeeks(item){
+  document.querySelectorAll(".edge-peek").forEach(el=>el.remove());
+  const idx = SORTED_BY_YEAR.findIndex(d=>d.id===item.id);
+  const earlier = idx>0 ? SORTED_BY_YEAR[idx-1] : null;   // older -> right edge
+  const later = idx<SORTED_BY_YEAR.length-1 ? SORTED_BY_YEAR[idx+1] : null; // newer -> left edge
 
-  const scroll = document.getElementById("tl-scroll");
-  scroll.innerHTML = "";
-  for(let y = maxY; y >= minY; y--){
-    const tick = document.createElement("div");
-    tick.className = "tick";
-    if(itemYears.has(y)) tick.classList.add("has-item");
-    if(y === current) tick.classList.add("current");
-    tick.innerHTML = `<div class="yr">${y}</div><div class="mark"></div>`;
-    if(itemYears.has(y)){
-      const target = DATA.find(d=>d.year===y);
-      tick.onclick = ()=>openDetail(target.id);
-    }
-    scroll.appendChild(tick);
-  }
-  if(current !== null){
-    requestAnimationFrame(()=>{
-      const el = scroll.querySelector(".tick.current");
-      if(el) el.scrollIntoView({inline:"center", block:"nearest"});
-    });
-  }
+  if(earlier) document.body.appendChild(buildPeek(earlier, "right"));
+  if(later) document.body.appendChild(buildPeek(later, "left"));
+}
+function buildPeek(peekItem, side){
+  const el = document.createElement("div");
+  el.className = "edge-peek " + side;
+  el.onclick = ()=>openDetail(peekItem.id);
+  el.innerHTML = `<div class="thumb">${typeThumbLabel(peekItem)}</div><div class="yr">${peekItem.year}</div>`;
+  return el;
 }
 
-/* ---------- init ---------- */
-document.getElementById("era-label").textContent = "";
-renderOverview();
-renderTimelineBar();
+/* ---------- mini local axis, zoomed to this item's neighborhood ---------- */
+function renderMiniAxis(item){
+  const el = document.getElementById("detail-mini-axis");
+  const w = el.clientWidth || 900;
+  const span = 100; // total years shown across the mini axis
+  const scale = w/span;
+  const minY = item.year - span/2;
+  const maxY = item.year + span/2;
+  function x(y){ return (maxY - y) * scale; }
+
+  const interval = niceInterval(scale, 60);
+  const start = Math.ceil(minY/interval)*interval;
+  let html = "";
+  for(let y=start; y<=maxY; y+=interval){
+    html += `<div class="mini-tick" style="left:${x(y)}px"><div class="lbl">${y}</div></div>`;
+  }
+  html += `<div class="mini-tick current" style="left:${x(item.year)}px"><div class="lbl">${item.year}</div></div>`;
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderLanding();
+setView("landing");
 </script>
 </body>
 </html>
