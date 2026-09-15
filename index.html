@@ -142,8 +142,8 @@
   }
   .tl-axis{
     position:absolute;
-    left:0; right:0; bottom:0;
-    height:58px;
+    left:0; right:0; bottom:76px;
+    height:52px;
     background:var(--maroon);
   }
   .tl-tick{
@@ -161,7 +161,7 @@
   }
   .tl-item{
     position:absolute;
-    bottom:66px;
+    bottom:136px;
     width:96px;
     transform:translateX(-50%);
     cursor:pointer;
@@ -186,7 +186,7 @@
 
   .tl-tag{
     position:absolute;
-    top:calc(100% - 40px);
+    bottom:24px;
     transform:translateX(-50%);
     background:var(--tag-blue-bg);
     border:1.5px solid var(--tag-blue-border);
@@ -1859,7 +1859,6 @@ function setView(name){
   document.getElementById("landing").style.display = name==="landing" ? "flex" : "none";
   document.getElementById("timeline-view").style.display = name==="timeline" ? "flex" : "none";
   document.getElementById("detail").style.display = name==="detail" ? "block" : "none";
-  if(name !== "detail") document.querySelectorAll(".edge-peek").forEach(el=>el.remove());
 }
 
 /* ============================================================
@@ -1889,21 +1888,57 @@ function renderLanding(){
    ============================================================ */
 const BASE_SCALE = 0.55;      // px per year == "100%"
 let tlScale = BASE_SCALE;
-let centerYear = (GLOBAL_MIN+GLOBAL_MAX)/2;
+let panOffsetPx = 0;          // single source of truth for horizontal position (the track's translateX)
 let currentEra = null;
 const TRACK_MIN = GLOBAL_MIN - 80;
 const TRACK_MAX = GLOBAL_MAX + 80;
 
 function yearToX(year){ return (TRACK_MAX - year) * tlScale; }
 
+/* how densely-packed a given era is -> pick a scale where its items have room to breathe */
+function fitScaleForEra(era){
+  const r = ERA_RANGES[era];
+  const canvas = document.getElementById("tl-canvas");
+  const w = canvas.clientWidth || 1100;
+  if(!r) return BASE_SCALE;
+  const span = Math.max(r.max - r.min, 15);
+  const s = (w*0.72) / span;
+  return Math.max(0.03, Math.min(s, 10));
+}
+
+/* keep the track from ever panning past its own edges, so the red bar always fills the canvas */
+function clampOffset(offset){
+  const canvas = document.getElementById("tl-canvas");
+  const track = document.getElementById("tl-track");
+  const canvasW = canvas.clientWidth;
+  const totalWidth = track.offsetWidth || yearToX(TRACK_MIN);
+  const minOffset = Math.min(0, canvasW - totalWidth);
+  return Math.max(minOffset, Math.min(0, offset));
+}
+
+function currentCenterYear(){
+  const canvas = document.getElementById("tl-canvas");
+  const xAtCenter = canvas.clientWidth/2 - panOffsetPx;
+  return TRACK_MAX - xAtCenter/tlScale;
+}
+
+function centerOnYear(year){
+  const canvas = document.getElementById("tl-canvas");
+  panOffsetPx = clampOffset(canvas.clientWidth/2 - yearToX(year));
+}
+
 function openTimeline(era){
   currentEra = era;
-  if(ERA_RANGES[era]) centerYear = (ERA_RANGES[era].min + ERA_RANGES[era].max)/2;
   currentId = null;
   setView("timeline");
   renderEraTabs();
   renderTimelineHeader();
-  requestAnimationFrame(renderTrack);
+  requestAnimationFrame(()=>{
+    if(ERA_RANGES[era]) tlScale = fitScaleForEra(era);
+    buildTrackContent();
+    if(ERA_RANGES[era]) centerOnYear((ERA_RANGES[era].min + ERA_RANGES[era].max)/2);
+    applyTransform();
+  });
 }
 
 function renderEraTabs(){
@@ -1914,7 +1949,14 @@ function renderEraTabs(){
     tab.className = "tab" + (era===currentEra ? " active" : "");
     tab.style.background = ERA_COLORS[era];
     tab.textContent = ERA_NAMES[era];
-    tab.onclick = ()=>{ currentEra = era; if(ERA_RANGES[era]) centerYear=(ERA_RANGES[era].min+ERA_RANGES[era].max)/2; renderEraTabs(); renderTimelineHeader(); renderTrack(); };
+    tab.onclick = ()=>{
+      currentEra = era;
+      renderEraTabs(); renderTimelineHeader();
+      if(ERA_RANGES[era]) tlScale = fitScaleForEra(era);
+      buildTrackContent();
+      if(ERA_RANGES[era]) centerOnYear((ERA_RANGES[era].min+ERA_RANGES[era].max)/2);
+      applyTransform();
+    };
     wrap.appendChild(tab);
   });
 }
@@ -1924,10 +1966,10 @@ function renderTimelineHeader(){
   document.getElementById("tl-era-range").textContent = currentEra ? "  " + eraRangeLabel(currentEra) : "";
 }
 
-function renderTrack(){
-  const canvas = document.getElementById("tl-canvas");
+/* rebuild the axis / ticks / item markers — only needed when the scale or dataset changes,
+   NOT on every drag frame (dragging only has to move the already-built content) */
+function buildTrackContent(){
   const track = document.getElementById("tl-track");
-  const canvasW = canvas.clientWidth;
   const totalWidth = yearToX(TRACK_MIN);
   track.style.width = totalWidth + "px";
 
@@ -1953,47 +1995,61 @@ function renderTrack(){
   });
 
   track.innerHTML = html;
+}
 
-  const offset = canvasW/2 - yearToX(centerYear);
-  track.style.transform = `translateX(${offset}px)`;
-
+/* cheap: just move the already-built track + refresh the zoom % readout */
+function applyTransform(){
+  document.getElementById("tl-track").style.transform = `translateX(${panOffsetPx}px)`;
   document.getElementById("tl-pct").textContent = Math.round((tlScale/BASE_SCALE)*100) + "%";
 }
 
-function xToYear(offsetPx, canvasW){
-  const xAtCenter = canvasW/2 - offsetPx;
-  return TRACK_MAX - xAtCenter/tlScale;
+function renderTrack(){
+  buildTrackContent();
+  panOffsetPx = clampOffset(panOffsetPx);
+  applyTransform();
 }
 
-/* dragging to pan */
+/* dragging to pan — the track follows the cursor directly, and only the transform changes per frame */
 (function initDrag(){
   const canvas = document.getElementById("tl-canvas");
-  let dragging=false, startX=0, startCenter=0;
+  let dragging=false, startX=0, startOffset=0;
   canvas.addEventListener("pointerdown", e=>{
-    dragging=true; startX=e.clientX; startCenter=centerYear;
+    dragging=true; startX=e.clientX; startOffset=panOffsetPx;
     canvas.classList.add("dragging");
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", e=>{
     if(!dragging) return;
     const dx = e.clientX - startX;
-    centerYear = startCenter - dx/tlScale;
-    centerYear = Math.max(TRACK_MIN, Math.min(TRACK_MAX, centerYear));
-    renderTrack();
+    panOffsetPx = clampOffset(startOffset + dx);
+    applyTransform();
   });
   function stop(){ dragging=false; canvas.classList.remove("dragging"); }
   canvas.addEventListener("pointerup", stop);
   canvas.addEventListener("pointerleave", stop);
 })();
 
-document.getElementById("tl-zoom-in").onclick = ()=>{ tlScale = Math.min(tlScale*1.4, 12); renderTrack(); };
-document.getElementById("tl-zoom-out").onclick = ()=>{ tlScale = Math.max(tlScale/1.4, 0.03); renderTrack(); };
+document.getElementById("tl-zoom-in").onclick = ()=>{
+  const y = currentCenterYear();
+  tlScale = Math.min(tlScale*1.4, 12);
+  buildTrackContent(); centerOnYear(y); applyTransform();
+};
+document.getElementById("tl-zoom-out").onclick = ()=>{
+  const y = currentCenterYear();
+  tlScale = Math.max(tlScale/1.4, 0.03);
+  buildTrackContent(); centerOnYear(y); applyTransform();
+};
 document.getElementById("tl-overview-btn").onclick = ()=>{ setView("landing"); };
 document.getElementById("tl-help-btn").onclick = ()=>{
   const pop = document.getElementById("tl-help-pop");
   pop.style.display = pop.style.display==="block" ? "none" : "block";
 };
-window.addEventListener("resize", ()=>{ if(document.getElementById("timeline-view").style.display!=="none") renderTrack(); });
+window.addEventListener("resize", ()=>{
+  if(document.getElementById("timeline-view").style.display!=="none"){
+    const y = currentCenterYear();
+    buildTrackContent(); centerOnYear(y); applyTransform();
+  }
+});
 
 /* ============================================================
    DETAIL VIEW
@@ -2051,11 +2107,14 @@ function backToTimeline(){
   const item = byId(currentId);
   setView("timeline");
   currentEra = item ? item.era : currentEra;
-  centerYear = item ? item.year : centerYear;
   currentId = null;
   renderEraTabs();
   renderTimelineHeader();
-  requestAnimationFrame(renderTrack);
+  requestAnimationFrame(()=>{
+    buildTrackContent();
+    if(item) centerOnYear(item.year);
+    applyTransform();
+  });
 }
 
 function captureRects(){
